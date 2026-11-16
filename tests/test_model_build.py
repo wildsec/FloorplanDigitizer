@@ -95,6 +95,30 @@ def test_native_sh3d_one_file_per_floor(built, sh3d_oracle):
     assert sh3d_oracle(built[0] / "Upper_Floor.sh3d")["counts"] == (6, 3, 0)
 
 
+def test_native_sh3d_doors_and_windows(built, sh3d_oracle):
+    dw = {d["name"].split()[1]: d for d in sh3d_oracle(built[0] / "Ground_Floor.sh3d")["dw"]}
+    assert set(dw) == {"D1", "D2", "D3", "W1", "W2", "W3"}
+    assert all(d["model"] for d in dw.values()), "embedded 3D models must load"
+    d1, w1 = dw["D1"], dw["W1"]
+    assert (d1["x"], d1["y"], d1["width"], d1["depth"], d1["height"]) == pytest.approx((670, -15, 100, 30, 210))
+    assert d1["sashes"] == 1 and w1["sashes"] == 0
+    assert (w1["elevation"], w1["width"]) == pytest.approx((80, 180))
+
+
+def test_sweet_home_3d_plan_render(built, tmp_path):
+    import os
+    import subprocess
+    jar = os.environ.get("SH3D_JAR", "/usr/share/java/sweethome3d/SweetHome3D.jar")
+    if not (Path(jar).exists() and shutil.which("java")):
+        pytest.skip("java / SweetHome3D.jar not available")
+    png = tmp_path / "plan.png"
+    script = Path(__file__).resolve().parent.parent / "scripts" / "Sh3dRender.java"
+    r = subprocess.run(["java", "-cp", jar, str(script), str(built[0] / "Ground_Floor.sh3d"), str(png)],
+                       capture_output=True, text=True, timeout=180)
+    assert r.returncode == 0, r.stderr[-1500:]
+    assert png.stat().st_size > 5000
+
+
 def test_native_sh3d_combined_levels(tmp_path, sh3d_oracle):
     from floorplan_digitizer.export_sh3d import write_sh3d
     (p,) = write_sh3d(House(DEMO), tmp_path, combined=True)

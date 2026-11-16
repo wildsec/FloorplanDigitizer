@@ -50,7 +50,7 @@ def sh3d_oracle():
         out = subprocess.run(["java", "-cp", jar, str(ROOT / "scripts" / "Sh3dCheck.java"), str(path)],
                              capture_output=True, text=True, timeout=180)
         assert out.returncode == 0, out.stderr[-2000:]
-        res = {"walls": [], "rooms": [], "levels": [], "bg": None}
+        res = {"walls": [], "rooms": [], "levels": [], "bg": None, "dw": []}
         for line in out.stdout.splitlines():
             f = line.split("\t")
             if f[0] == "HOME":
@@ -64,6 +64,10 @@ def sh3d_oracle():
                                      "length": float(f[10]), "mid": (float(f[11]), float(f[12]))})
             elif f[0] == "ROOM":
                 res["rooms"].append((None if f[1] == "-" else f[1], int(f[2]), float(f[3])))
+            elif f[0] == "DW":
+                res["dw"].append({"name": f[1], "x": float(f[2]), "y": float(f[3]), "width": float(f[4]),
+                                  "depth": float(f[5]), "height": float(f[6]), "elevation": float(f[7]),
+                                  "angle": float(f[8]), "sashes": int(f[9]), "model": f[10] == "true"})
             elif f[0] == "BG":
                 res["bg"] = tuple(map(float, f[1:]))
         return res

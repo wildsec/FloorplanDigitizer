@@ -3,13 +3,15 @@ export_sh3d.py - Sweet Home 3D file straight from the building model.
 
 * one .sh3d file per floor (default), or one file with a Sweet Home 3D level
   per floor (combined=True; elevations shifted so the lowest level sits at 0);
-* walls keep their exact axis, thickness and height; walls stay closed at doors
-  and windows: drop doors/windows from the Sweet Home 3D catalogue onto them,
-  Sweet Home 3D then cuts the wall itself (exact positions: see the 2D plans);
+* walls keep their exact axis, thickness and height;
+* every door, window, opening and garage door becomes a Sweet Home 3D
+  doorOrWindow piece (generated simple 3D model, door swing as sash) placed in
+  its wall, so Sweet Home 3D cuts the wall; replace them with catalogue models
+  if you like (Modify furniture / drag a catalogue item onto it);
 * rooms become floors with their names;
 * optional: the original scan of each level (model `scans:`) as the level's
   background image, scaled and placed with the overlay control points.
-Not exported (yet): stairs, doors/windows as furniture, roofs.
+Not exported (yet): stairs, roofs.
 """
 from __future__ import annotations
 
@@ -91,6 +93,11 @@ def _write(H: House, keys, path, backgrounds, with_levels):
                 home.add_wall(pw.a[0], pw.a[1], pw.b[0], pw.b[1], round(pw.t, 1), height=(z0 + h) / 10,
                               level=lid[w["level"]])
 
+    for o in H.openings:
+        if o["level"] not in levels:
+            continue
+        _add_opening(H, home, o, lid[o["level"]])
+
     for r in H.d["rooms"]:
         if r["level"] not in levels:
             continue
@@ -103,6 +110,41 @@ def _write(H: House, keys, path, backgrounds, with_levels):
         _add_backgrounds(H, home, lid)
     home.save(path)
     return home
+
+
+KIND_MODEL = {"door": "door", "gate": "door", "window": "window", "garage_door": "garage", "opening": "opening"}
+NAMES = {"door": "Door", "gate": "Gate", "window": "Window", "garage_door": "Garage door", "opening": "Opening"}
+
+
+def _add_opening(H: House, home: Home, o, level_id):
+    """Door/window as a Sweet Home 3D doorOrWindow piece: centred in the wall,
+    as deep as the wall (so Sweet Home 3D cuts it), door swing as a sash.
+    Verified against Sweet Home 3D's own plan rendering (scripts/Sh3dRender.java)."""
+    w = H.walls[o["wall"]]
+    x1, y1, x2, y2 = w["rect"]
+    along_x = H.wall_axis(w) == "x"
+    t = abs(y2 - y1) if along_x else abs(x2 - x1)
+    cx, cy = (o["at"], (y1 + y2) / 2) if along_x else ((x1 + x2) / 2, o["at"])
+    side = (o.get("swing") or {}).get("side", "+")
+    hinge = (o.get("swing") or {}).get("hinge", "start")
+    # angle (SH3D, y down): front must face the swing side
+    if along_x:
+        angle = 0.0 if side == "+" else math.pi
+        hinge_left = (hinge == "start") == (side == "+")
+    else:
+        angle = math.pi / 2 if side == "+" else -math.pi / 2
+        hinge_left = (hinge == "end") == (side == "+")
+    # Sweet Home 3D draws the sash on the back side of the piece (+y local):
+    # turn the piece by 180 deg, which also swaps left and right
+    angle += math.pi
+    hinge_left = not hinge_left
+    sash = None
+    if o["kind"] in ("door", "gate"):
+        sash = (0, 0, 1, 0, -math.pi / 2) if hinge_left else (1, 0, 1, math.pi, 1.5 * math.pi)
+    elev = o.get("sill", 0) if o["kind"] == "window" else 0
+    home.add_door_or_window(KIND_MODEL[o["kind"]], f"{NAMES[o['kind']]} {o['id']} {o['width'] // 10}/{o['height'] // 10}",
+                            cx / 10, cy / 10, angle, o["width"] / 10, t / 10, o["height"] / 10, elev / 10,
+                            level=level_id, sash=sash)
 
 
 def _add_backgrounds(H: House, home: Home, lid):

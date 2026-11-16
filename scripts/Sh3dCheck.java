@@ -10,6 +10,7 @@
 //   WALL   <xStart> <yStart> <xEnd> <yEnd> <thickness> <height|-> <arcExtent|-> <atStart?> <atEnd?> <length> <midX> <midY>
 //   ROOM   <name|-> <points> <area>
 //   BG     <scale> <xOrigin> <yOrigin> <imageWidthPx> <imageHeightPx>
+//   DW     <name> <x> <y> <width> <depth> <height> <elevation> <angle> <sashes> <modelLoadable>
 import com.eteks.sweethome3d.io.HomeFileRecorder;
 import com.eteks.sweethome3d.model.*;
 import java.util.Locale;
@@ -38,6 +39,17 @@ public class Sh3dCheck {
         }
         for (Room r : home.getRooms()) {
             System.out.printf(Locale.ROOT, "ROOM\t%s\t%d\t%.3f%n", r.getName() == null ? "-" : r.getName(), r.getPoints().length, r.getArea());
+        }
+        for (HomePieceOfFurniture f : home.getFurniture()) {
+            if (f instanceof HomeDoorOrWindow) {
+                HomeDoorOrWindow d = (HomeDoorOrWindow) f;
+                boolean model;
+                try (java.io.InputStream in = d.getModel().openStream()) { model = in.read() >= 0; }
+                catch (Exception e) { model = false; }
+                System.out.printf(Locale.ROOT, "DW\t%s\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.6f\t%d\t%b%n", d.getName(),
+                        d.getX(), d.getY(), d.getWidth(), d.getDepth(), d.getHeight(), d.getElevation(), d.getAngle(),
+                        d.getSashes().length, model);
+            }
         }
         BackgroundImage bg = home.getBackgroundImage();
         if (bg == null && !home.getLevels().isEmpty()) {
