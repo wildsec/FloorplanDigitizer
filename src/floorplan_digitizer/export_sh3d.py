@@ -116,7 +116,136 @@ KIND_MODEL = {"door": "door", "gate": "door", "window": "window", "garage_door":
 NAMES = {"door": "Door", "gate": "Gate", "window": "Window", "garage_door": "Garage door", "opening": "Opening"}
 
 
+# --------------------------------------------------------------------------
+# Sweet Home 3D catalogue (read from the user's own installation, never vendored)
+# --------------------------------------------------------------------------
+SH3D_DIRS = ["/usr/share/java/sweethome3d", "/usr/share/sweethome3d", "/opt/SweetHome3D/lib",
+             "/Applications/Sweet Home 3D.app/Contents/Java"]
+
+
+class Catalog:
+    """Default door/window models of an installed Sweet Home 3D
+    (DefaultFurnitureCatalog.properties + Furniture.jar). Empty if not found."""
+
+    def __init__(self):
+        import os
+        import zipfile
+        self.items, self._jars = {}, []
+        dirs = [os.environ["SH3D_HOME"]] if os.environ.get("SH3D_HOME") else SH3D_DIRS
+        for d in dirs:
+            for name in ("Furniture.jar", "SweetHome3D.jar"):
+                p = os.path.join(d, name)
+                if os.path.exists(p):
+                    self._jars.append(zipfile.ZipFile(p))
+        props = self._read("com/eteks/sweethome3d/io/DefaultFurnitureCatalog.properties")
+        if not props:
+            return
+        raw = {}
+        for line in props.decode("latin-1").splitlines():
+            if "#" in line and "=" in line and not line.startswith("#"):
+                k, v = line.split("=", 1)
+                key, _, idx = k.partition("#")
+                raw.setdefault(idx, {})[key] = v.strip()
+        for e in raw.values():
+            if e.get("doorOrWindow") == "true" and "id" in e:
+                self.items[e["id"]] = e
+
+    def _read(self, path):
+        for z in self._jars:
+            try:
+                return z.read(path.lstrip("/"))
+            except KeyError:
+                continue
+        return None
+
+    def model(self, cid):
+        e = self.items.get(cid)
+        return self._read(e["model"]) if e else None
+
+
+_CATALOG = None
+
+
+def catalog():
+    global _CATALOG
+    if _CATALOG is None:
+        _CATALOG = Catalog()
+    return _CATALOG
+
+
+def pick_catalog_id(H: House, o):
+    if o.get("sh3d_model"):
+        return o["sh3d_model"]
+    kind = o["kind"]
+    if kind in ("door", "gate"):
+        return "eTeks#frontDoor" if H.walls[o["wall"]]["type"] in ("exterior", "enclosure") else "eTeks#door"
+    if kind == "window":
+        tall = o["height"] > 1450
+        if o["width"] >= 1100:
+            return "eTeks#doubleWindow126x163" if tall else "eTeks#doubleWindow126x123"
+        return "eTeks#window85x163" if tall else "eTeks#window85x123"
+    if kind == "garage_door":
+        return "eTeks#garageDoor"
+    return "eTeks#doorFrame"     # opening without a door
+
+
+def _floats(v):
+    return [float(x) for x in v.split()] if v else []
+
+
 def _add_opening(H: House, home: Home, o, level_id):
+    cat = catalog()
+    cid = pick_catalog_id(H, o)
+    data = cat.model(cid) if cat.items else None
+    if data is None:
+        return _add_generated_opening(H, home, o, level_id)
+    e = cat.items[cid]
+    w = H.walls[o["wall"]]
+    x1, y1, x2, y2 = w["rect"]
+    along_x = H.wall_axis(w) == "x"
+    wall_t = (abs(y2 - y1) if along_x else abs(x2 - x1)) / 10
+    cx, cy = ((o["at"], (y1 + y2) / 2) if along_x else ((x1 + x2) / 2, o["at"]))
+    cx, cy = cx / 10, cy / 10
+    side = (o.get("swing") or {}).get("side", "+")
+    hinge = (o.get("swing") or {}).get("hinge", "start")
+    if not o.get("swing"):           # windows etc. open towards the room
+        side = "+" if H.interior_side(o) > 0 else "-"
+    if along_x:
+        angle = 0.0 if side == "+" else math.pi
+        hinge_left = (hinge == "start") == (side == "+")
+    else:
+        angle = math.pi / 2 if side == "+" else -math.pi / 2
+        hinge_left = (hinge == "end") == (side == "+")
+    angle += math.pi                 # see _add_generated_opening (verified orientation)
+    hinge_left = not hinge_left
+    # depth: scale the catalogue piece so that its wall part equals the real wall
+    d = float(e.get("depth", 10))
+    wt = float(e.get("doorOrWindowWallThickness") or d)
+    wd = float(e.get("doorOrWindowWallDistance") or 0)
+    sc = wall_t / wt
+    depth = d * sc
+    # centre of the wall part (local y, from the piece centre) must sit on the wall axis
+    off = (-d / 2 + wd + wt / 2) * sc
+    sx, sy = cx, -cy                                     # Sweet Home 3D plan (y down)
+    sx -= -math.sin(angle) * off
+    sy -= math.cos(angle) * off
+    sashes = []
+    xs, ys_, ws = _floats(e.get("doorOrWindowSashXAxis")), _floats(e.get("doorOrWindowSashYAxis")), \
+        _floats(e.get("doorOrWindowSashWidth"))
+    st, en = _floats(e.get("doorOrWindowSashStartAngle")), _floats(e.get("doorOrWindowSashEndAngle"))
+    cw = float(e.get("width", 100))
+    for i in range(len(xs)):
+        sashes.append((xs[i] / cw, ys_[i] / d, ws[i] / cw, math.radians(st[i]), math.radians(en[i])))
+    elev = o.get("sill", 0) if o["kind"] == "window" else 0
+    entry = f"models/{cid.split('#')[-1]}.obj"
+    home.add_catalog_door_or_window(
+        entry, data, f"{e.get('name', cid)} {o['id']} {o['width'] // 10}/{o['height'] // 10}",
+        sx, -sy, angle, o["width"] / 10, depth, o["height"] / 10, elev / 10, level=level_id,
+        sashes=sashes, mirrored=not hinge_left and bool(sashes), wall_thickness=wt / d,
+        wall_distance=wd / d, catalog_id=cid)
+
+
+def _add_generated_opening(H: House, home: Home, o, level_id):
     """Door/window as a Sweet Home 3D doorOrWindow piece: centred in the wall,
     as deep as the wall (so Sweet Home 3D cuts it), door swing as a sash.
     Verified against Sweet Home 3D's own plan rendering (scripts/Sh3dRender.java)."""
@@ -127,6 +256,8 @@ def _add_opening(H: House, home: Home, o, level_id):
     cx, cy = (o["at"], (y1 + y2) / 2) if along_x else ((x1 + x2) / 2, o["at"])
     side = (o.get("swing") or {}).get("side", "+")
     hinge = (o.get("swing") or {}).get("hinge", "start")
+    if not o.get("swing"):           # windows etc. open towards the room
+        side = "+" if H.interior_side(o) > 0 else "-"
     # angle (SH3D, y down): front must face the swing side
     if along_x:
         angle = 0.0 if side == "+" else math.pi

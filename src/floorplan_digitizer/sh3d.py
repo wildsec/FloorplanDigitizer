@@ -61,6 +61,11 @@ class DoorOrWindow:
     model: str             # ZIP entry of the OBJ model
     level: str | None = None
     sash: tuple | None = None   # (xAxis, yAxis, width) as fractions + (start, end) radians
+    sashes: list | None = None  # several sashes (same format); overrides sash
+    mirrored: bool = False
+    wall_thickness: float = 1.0  # fraction of the depth that lies in the wall
+    wall_distance: float = 0.0   # fraction of the depth in front of the wall
+    catalog_id: str | None = None
 
 
 def _box(x0, y0, z0, x1, y1, z1, n):
@@ -148,6 +153,7 @@ class Home:
         self.levels: list[Level] = []
         self.backgrounds: list[Background] = []
         self.openings: list[DoorOrWindow] = []
+        self.model_data: dict[str, bytes] = {}
         self._n = 0
 
     # ---------- building ----------
@@ -176,6 +182,16 @@ class Home:
         """kind: door | window | garage | opening (selects the generated 3D model)."""
         d = DoorOrWindow(self._id("dw"), name, x, y, angle, width, depth, height, elevation,
                          f"models/{kind}.obj", level, sash)
+        self.openings.append(d)
+        return d
+
+    def add_catalog_door_or_window(self, entry, data, name, x, y, angle, width, depth, height, elevation=0.0,
+                                   level=None, sashes=None, mirrored=False, wall_thickness=1.0,
+                                   wall_distance=0.0, catalog_id=None) -> DoorOrWindow:
+        """Door/window with a given OBJ model (e.g. from the Sweet Home 3D catalogue)."""
+        self.model_data[entry] = data
+        d = DoorOrWindow(self._id("dw"), name, x, y, angle, width, depth, height, elevation, entry, level,
+                         None, sashes, mirrored, wall_thickness, wall_distance, catalog_id)
         self.openings.append(d)
         return d
 
@@ -216,17 +232,21 @@ class Home:
                 o.append(f"<level {attrs}/>")
         for d in self.openings:
             a = [f'id={quoteattr(d.id)}', f'name={quoteattr(d.name)}']
+            if d.catalog_id:
+                a.append(f'catalogId={quoteattr(d.catalog_id)}')
             if d.level:
                 a.append(f'level={quoteattr(d.level)}')
             a += [f'x="{_f(d.x)}"', f'y="{_f(self._y(d.y))}"', f'elevation="{_f(d.elevation)}"',
                   f'angle="{_f(d.angle % (2 * math.pi))}"', f'width="{_f(d.width)}"', f'depth="{_f(d.depth)}"',
                   f'height="{_f(d.height)}"', f'model={quoteattr(d.model)}', 'movable="false"',
-                  'doorOrWindow="true"', 'wallThickness="1"', 'wallDistance="0"', 'boundToWall="true"']
+                  'doorOrWindow="true"', f'wallThickness="{_f(d.wall_thickness)}"',
+                  f'wallDistance="{_f(d.wall_distance)}"', 'boundToWall="true"']
+            if d.mirrored:
+                a.append('modelMirrored="true"')
             inner = ""
-            if d.sash:
-                xa, ya, sw, st, en = d.sash
-                inner = (f'<sash xAxis="{_f(xa)}" yAxis="{_f(ya)}" width="{_f(sw)}" '
-                         f'startAngle="{st:.6f}" endAngle="{en:.6f}"/>')
+            for xa, ya, sw, st, en in (d.sashes or ([d.sash] if d.sash else [])):
+                inner += (f'<sash xAxis="{_f(xa)}" yAxis="{_f(ya)}" width="{_f(sw)}" '
+                          f'startAngle="{st:.6f}" endAngle="{en:.6f}"/>')
             o.append(f"<doorOrWindow {' '.join(a)}>{inner}</doorOrWindow>" if inner
                      else f"<doorOrWindow {' '.join(a)}/>")
         for w in self.walls:
@@ -263,7 +283,9 @@ class Home:
             z.writestr("Home.xml", self.to_xml())
             for b in self.backgrounds:
                 z.writestr(b.entry, b.data)
-            for kind in sorted({d.model.split("/")[1][:-4] for d in self.openings}):
+            for entry, data in self.model_data.items():
+                z.writestr(entry, data)
+            for kind in sorted({d.model.split("/")[1][:-4] for d in self.openings if d.model not in self.model_data}):
                 obj, mtl = _obj(kind, MODELS[kind])
                 z.writestr(f"models/{kind}.obj", obj)
                 z.writestr(f"models/{kind}.mtl", mtl)

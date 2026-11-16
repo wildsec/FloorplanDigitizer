@@ -29,5 +29,6 @@ public class Sh3dRender {
         g.dispose();
         ImageIO.write(img, "png", new File(args[1]));
         System.out.println("rendered " + d.width + "x" + d.height);
+        System.exit(0);   // AWT threads would keep the JVM alive
     }
 }

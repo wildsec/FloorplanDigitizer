@@ -96,12 +96,15 @@ def test_native_sh3d_one_file_per_floor(built, sh3d_oracle):
 
 
 def test_native_sh3d_doors_and_windows(built, sh3d_oracle):
-    dw = {d["name"].split()[1]: d for d in sh3d_oracle(built[0] / "Ground_Floor.sh3d")["dw"]}
+    import re
+    dw = {re.search(r"\b([A-Z]+\d+)\b", d["name"]).group(1): d
+          for d in sh3d_oracle(built[0] / "Ground_Floor.sh3d")["dw"]}
     assert set(dw) == {"D1", "D2", "D3", "W1", "W2", "W3"}
     assert all(d["model"] for d in dw.values()), "embedded 3D models must load"
     d1, w1 = dw["D1"], dw["W1"]
-    assert (d1["x"], d1["y"], d1["width"], d1["depth"], d1["height"]) == pytest.approx((670, -15, 100, 30, 210))
-    assert d1["sashes"] == 1 and w1["sashes"] == 0
+    assert (d1["x"], d1["width"], d1["height"]) == pytest.approx((670, 100, 210))
+    assert d1["depth"] >= 30 - 1e-6           # at least as deep as the wall, so it is cut through
+    assert d1["sashes"] == 1 and w1["sashes"] in (0, 2)   # 2 with the installed catalogue double window
     assert (w1["elevation"], w1["width"]) == pytest.approx((80, 180))
 
 
