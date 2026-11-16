@@ -1,0 +1,35 @@
+# ---- never commit real plans or generated outputs ----
+*.dxf
+*.dwg
+*.sh3d
+*.ifc
+*.pdf
+*.png
+*.jpg
+*.jpeg
+*.tif
+*.tiff
+*.svg
+*.zip
+# real building models live in the user's project, not here
+*.yaml
+*.yml
+!examples/**/model.yaml
+!.github/**/*.yml
+# output folders people tend to create
+Review/
+out/
+output/
+Originals/
+CAD/
+BIM/
+SH3D/
+
+# ---- Python ----
+.venv/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+tests/.cache/
+build/
+dist/

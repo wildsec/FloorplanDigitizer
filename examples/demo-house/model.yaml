@@ -1,0 +1,98 @@
+# =====================================================================
+#  Demo house - an INVENTED two-storey house for examples and tests.
+#  It is not based on any real building.
+# =====================================================================
+#  Units: millimetres. Origin: outer corner bottom-left. +x right, +y up.
+#  src: O original (read from the plan) | D derived | E estimated | M measured
+# =====================================================================
+
+meta:
+  project: "Demo House"
+  title: "Digitised floor plans (example)"
+  variant: "as drawn"
+  file_stem: "DemoHouse"
+  site_name: "Demo site"
+  north_deg_from_plan_up: 20
+  north_arrow_at: [-1600, 7600]
+  dim_format: m
+  version: "1.0"
+  source_lines:
+    - "Invented example model"
+    - "FloorplanDigitizer demo"
+
+levels:
+  EG: {file: Ground_Floor, name: "Erdgeschoss", name_en: "Ground Floor", plan_no: "01", elevation: 0,    clear_height: 2600, slab_above: 300, floor_thickness: 200, src: O}
+  OG: {file: Upper_Floor,  name: "Obergeschoss", name_en: "Upper Floor", plan_no: "02", elevation: 2900, clear_height: 2500, src: O}
+
+walls:
+  # ---- EG ----
+  - {id: EG-W1, level: EG, type: exterior, rect: [0, 0, 9000, 300],       src: O, note: "facade south"}
+  - {id: EG-W2, level: EG, type: exterior, rect: [0, 300, 300, 6700],     src: O}
+  - {id: EG-W3, level: EG, type: exterior, rect: [0, 6700, 9000, 7000],   src: O}
+  - {id: EG-W4, level: EG, type: exterior, rect: [8700, 300, 9000, 6700], src: O}
+  - {id: EG-W5, level: EG, type: interior, rect: [5400, 300, 5520, 6700], src: O}
+  - {id: EG-W6, level: EG, type: interior, rect: [5520, 4400, 8700, 4520], src: O}
+  # ---- OG ----
+  - {id: OG-W1, level: OG, type: exterior, rect: [0, 0, 9000, 300],       src: O}
+  - {id: OG-W2, level: OG, type: exterior, rect: [0, 300, 300, 6700],     src: O}
+  - {id: OG-W3, level: OG, type: exterior, rect: [0, 6700, 9000, 7000],   src: O}
+  - {id: OG-W4, level: OG, type: exterior, rect: [8700, 300, 9000, 6700], src: O}
+  - {id: OG-W5, level: OG, type: interior, rect: [5400, 300, 5520, 6700], src: O}
+  - {id: OG-W6, level: OG, type: interior, rect: [5520, 4800, 8700, 4920], src: E, note: "position estimated"}
+
+openings:
+  - {id: D1, level: EG, wall: EG-W1, kind: door,   at: 6700, width: 1000, height: 2100, swing: {side: "+", hinge: start}, src: O, src_pos: O}
+  - {id: W1, level: EG, wall: EG-W1, kind: window, at: 2700, width: 1800, height: 1400, sill: 800, src: O, src_pos: O}
+  - {id: W2, level: EG, wall: EG-W2, kind: window, at: 3500, width: 1200, height: 1400, sill: 800, src: O, src_pos: O}
+  - {id: W3, level: EG, wall: EG-W3, kind: window, at: 7100, width: 1200, height: 1200, sill: 1000, src: O, src_pos: O}
+  - {id: D2, level: EG, wall: EG-W5, kind: door,   at: 1900, width: 900, height: 2000, swing: {side: "-", hinge: start}, src: O, src_pos: E}
+  - {id: D3, level: EG, wall: EG-W6, kind: door,   at: 6200, width: 900, height: 2000, swing: {side: "+", hinge: start}, src: O, src_pos: O}
+  - {id: W4, level: OG, wall: OG-W1, kind: window, at: 2700, width: 1500, height: 1200, sill: 900, src: O, src_pos: O}
+  - {id: W5, level: OG, wall: OG-W3, kind: window, at: 7100, width: 900,  height: 900,  sill: 1200, src: O, src_pos: O}
+  - {id: D4, level: OG, wall: OG-W5, kind: door,   at: 4000, width: 900, height: 2000, swing: {side: "-", hinge: end}, src: O, src_pos: E}
+  - {id: D5, level: OG, wall: OG-W6, kind: door,   at: 6200, width: 800, height: 2000, swing: {side: "+", hinge: start}, src: O, src_pos: E}
+
+rooms:
+  - {id: R1, level: EG, name: "Living",  rect: [300, 300, 5400, 6700],  area_original: 32.64, src: O}
+  - {id: R2, level: EG, name: "Hall",    rect: [5520, 300, 8700, 4400], src: O, label_at: [6500, 2000]}
+  - {id: R3, level: EG, name: "Kitchen", rect: [5520, 4520, 8700, 6700], src: O}
+  - {id: R4, level: OG, name: "Bedroom", rect: [300, 300, 5400, 6700],  src: O}
+  - {id: R5, level: OG, name: "Landing", rect: [5520, 300, 8700, 4800], src: O, label_at: [6500, 2000]}
+  - {id: R6, level: OG, name: "Bath",    rect: [5520, 4920, 8700, 6700], src: E}
+
+stairs:
+  - id: S1
+    name: "Stair"
+    from: EG
+    to: OG
+    rise: 2900
+    risers: 16
+    width: 1000
+    src: O
+    draw_on: {EG: cut, OG: full}
+    cut_after: 6
+    segments:
+      - {type: straight, box: [7600, 500, 8600, 4250], dir: "+y", n: 15}
+
+chimneys:
+  - {id: C1, levels: [EG, OG], rect: [5520, 4520, 5900, 4780], flues: 1, flue_size: [140, 200], top: 7500, src: O}
+
+fixtures:
+  - {id: F1, level: OG, type: bathtub, rect: [6900, 4920, 8600, 5670], back: "-y", src: E}
+  - {id: F2, level: OG, type: wc,      rect: [5700, 6000, 6100, 6700], back: "+y", src: E}
+
+slabs:
+  - {id: SLAB-EG, name: "Ground slab", level: EG, envelope: EG, top: 0, thickness: 200, src: O}
+  - {id: SLAB-OG, name: "Floor slab",  level: OG, envelope: OG, top: 0, thickness: 300, holes: [S1], src: O}
+
+dimensions:
+  EG:
+    - {axis: x, geom: cut,    line: 150,  from: 0, to: 9000, place: -1200}
+    - {axis: x, geom: walls,  line: 1000, from: 0, to: 9000, place: -1800}
+    - {axis: x, geom: points, ticks: [0, 9000],              place: -2400}
+    - {axis: y, geom: walls,  line: 6000, from: 0, to: 7000, place: 10000}
+    - {axis: y, geom: points, ticks: [0, 7000],              place: 10600}
+  OG:
+    - {axis: x, geom: walls,  line: 1000, from: 0, to: 9000, place: -1200}
+    - {axis: x, geom: points, ticks: [0, 9000],              place: -1800}
+    - {axis: y, geom: walls,  line: 6000, from: 0, to: 7000, place: 10000}

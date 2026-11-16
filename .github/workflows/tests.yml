@@ -1,0 +1,18 @@
+name: tests
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Privacy guard (no plans, scans or CAD/BIM files in the repo)
+        run: python3 scripts/check_no_private_data.py --all
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: |
+          sudo apt-get update && sudo apt-get install -y poppler-utils libcairo2
+          pip install -e ".[test]"
+      - name: Tests (Sweet Home 3D oracle tests are skipped without Java + SweetHome3D.jar)
+        run: pytest -q -rs

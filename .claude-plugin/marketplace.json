@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "floorplan-digitizer",
+  "owner": {
+    "name": "wildsec"
+  },
+  "metadata": {
+    "description": "FloorplanDigitizer - old floor plans to editable 2D/3D building data (SVG, PDF, PNG, DXF, IFC, Sweet Home 3D).",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "floorplan-digitizer",
+      "source": "./",
+      "description": "Digitise old floor plans into one editable building model and generate SVG, PDF, PNG, DXF, IFC and Sweet Home 3D; plus a DXF -> Sweet Home 3D converter.",
+      "version": "0.1.0",
+      "author": {
+        "name": "wildsec"
+      },
+      "category": "productivity",
+      "tags": ["floorplan", "cad", "dxf", "ifc", "bim", "sweethome3d", "architecture"]
+    }
+  ]
+}

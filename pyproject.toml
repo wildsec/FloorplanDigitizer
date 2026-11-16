@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "floorplan-digitizer"
+version = "0.1.0"
+description = "Turn old floor plans into an editable building model and generate SVG, PDF, PNG, DXF, IFC and Sweet Home 3D files; plus a DXF -> Sweet Home 3D converter."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+dependencies = [
+  "ezdxf>=1.3",
+  "shapely>=2.0",
+  "pyyaml>=6",
+  "numpy>=1.24",
+  "pillow>=10",
+  "cairosvg>=2.7",
+  "lxml>=5",
+]
+
+[project.optional-dependencies]
+bim = ["ifcopenshell>=0.8"]
+background = ["matplotlib>=3.8"]
+test = ["pytest>=8", "matplotlib>=3.8", "ifcopenshell>=0.8"]
+
+[project.scripts]
+floorplan-digitizer = "floorplan_digitizer.cli:main"
+dxf2sh3d = "floorplan_digitizer.dxf2sh3d:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

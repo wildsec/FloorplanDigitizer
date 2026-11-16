@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin.json",
+  "name": "floorplan-digitizer",
+  "displayName": "FloorplanDigitizer",
+  "version": "0.1.0",
+  "description": "Turn old, scanned or hand-drawn floor plans into a precise, editable digital building model (every value marked original / derived / estimated) and generate SVG, PDF, PNG, CAD (DXF), BIM (IFC) and Sweet Home 3D files from it. Includes a DXF -> Sweet Home 3D converter with real walls and rooms.",
+  "author": {
+    "name": "wildsec"
+  },
+  "homepage": "https://github.com/wildsec/FloorplanDigitizer",
+  "repository": "https://github.com/wildsec/FloorplanDigitizer",
+  "license": "MIT",
+  "keywords": ["floor plan", "floorplan", "digitize", "scan", "cad", "dxf", "ifc", "bim", "sweet home 3d", "sh3d", "architecture", "renovation", "digital twin"]
+}
